@@ -63,7 +63,7 @@ class ErrorBoundary extends Component {
   }
 }
 
-const API = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000").replace(/\/$/, "");
+const API = (import.meta.env.VITE_API_BASE_URL || "https://coronary-angiogram-ai.onrender.com").replace(/\/$/, "");
 const MAX_FILE_SIZE_MB = 12;
 const ALLOWED_TYPES = ["image/png", "image/jpeg"];
 

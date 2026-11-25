@@ -1,0 +1,148 @@
+\chapter{METHODOLOGY}
+
+\section{Requirement Analysis}
+System requirements for the Coronary AI platform were formulated by synthesizing interventional cardiology workflow standards, the ARCADE dataset structure, and modern web application benchmarks.
+
+\subsection{Functional Requirements}
+\begin{enumerate}
+    \item \textbf{Image Ingestion \& Validation (FR-1):} Ingest 2D fluoroscopic angiograms in standard formats (PNG, JPEG), reject corrupted or non-image payloads, and normalize image matrices to standard spatial resolutions ($256 \times 256 \times 3$ and $224 \times 224 \times 3$).
+    \item \textbf{Multi-Model Neural Inference (FR-2):} Concurrently execute U-Net++ for vessel tree segmentation, EfficientNet-B0 for stenosis classification, U-Net (ResNet34) for focal stenosis outline generation, and Grad-CAM for saliency mapping.
+    \item \textbf{Multi-Lesion Spatial Extraction (FR-3):} Apply an 8-connectivity connected-component algorithm on binary stenosis masks, filter noise artifacts ($\text{area} < 20$ pixels), assign stable identifiers ($L1, L2, \dots, L_n$) sorted descending by pixel area, and compute centroid and bounding-box coordinates.
+    \item \textbf{Anatomical Association \& Mapping (FR-4):} Associate segmented lesions with epicardial coronary arterial branches (LAD, LCX, RCA), assign 3D surface coordinates for mapped lesions, and explicitly classify peripheral fragments as ``Unmapped'' (2D-only) to avoid false-positive 3D heart pins.
+    \item \textbf{Geometric Modeling \& QCA (FR-5):} Superpose multi-lesion plaque narrowings along 100 vessel centerline samples, calculate Minimal Lumen Diameter (MLD), Minimal Lumen Area (MLA), and Percent Diameter Stenosis (\%DS), and enforce patent uniform cylinder geometry on negative cases.
+    \item \textbf{Synchronized 3D Visualization Suite (FR-6):} Render an interactive 3D Virtual Heart with numbered multi-beacon lesion markers, a 3D Artery Interior with a 180$^\circ$ longitudinal lumen cutaway and camera scrubber, a Cross-Section Inspector, and an illustrative Hemodynamic particle flow simulator.
+    \item \textbf{AI Analytics \& Case Reporting (FR-7):} Dynamically aggregate active case lesion tables, branch distribution bars, model validation benchmarks, and generate printable multi-lesion clinical research evaluation reports.
+    \item \textbf{Session State Hygiene (FR-8):} Enforce strict analysis ID isolation, completely purging previous markers, cross-sections, and state upon new image upload or clearing.
+\end{enumerate}
+
+\subsection{Non-Functional Requirements}
+\begin{enumerate}
+    \item \textbf{Processing Latency:} End-to-end CPU inference across all four models must complete in under 1.5 seconds per angiogram frame.
+    \item \textbf{Interactive 3D Frame Rate:} Three.js and WebGL rendering must sustain $\ge 50$ frames per second (FPS) during user rotation, zooming, and camera animation.
+    \item \textbf{Robustness \& Fault Tolerance:} API endpoints must provide comprehensive HTTP error handling (400 for bad input, 415 for unsupported media, 404 for missing cases).
+    \item \textbf{Data Provenance \& Governance:} Strict FDA Investigational Use Only (IUO) disclaimers must be embedded across all analytical displays, disclaiming uncalibrated 2D approximations.
+\end{enumerate}
+
+\section{System Design and Architecture}
+The overall system design is structured around a decoupled, microservices-style full-stack architecture comprising a deep learning inference engine, a REST API layer, and an interactive React-based graphical workstation.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=1.3cm, auto,
+    block/.style={rectangle, draw, fill=blue!10, text width=9.5cm, text centered, rounded corners, minimum height=1.0cm},
+    line/.style={draw, -latex', thick}]
+    
+    \node [block] (input) {\textbf{Coronary Angiogram Input (Fluoroscopy Frame)}};
+    \node [block, below of=input] (prep) {\textbf{Preprocessing \& Image Normalization (CLAHE, Resize 256x256)}};
+    \node [block, below of=prep] (stage1) {\textbf{Stage 1: Vessel Segmentation (U-Net++ ResNet34) $\rightarrow$ Vessel Mask}};
+    \node [block, below of=stage1] (stage2) {\textbf{Stage 2: Stenosis Classification (EfficientNet-B0) $\rightarrow$ Confidence Score}};
+    \node [block, below of=stage2] (stage3) {\textbf{Stage 3: Explainability Hook (Grad-CAM) $\rightarrow$ Feature Saliency Map}};
+    \node [block, below of=stage3] (stage4) {\textbf{Stage 4: Lesion Outline Segmentation (U-Net ResNet34) $\rightarrow$ Stenosis Mask}};
+    \node [block, below of=stage4] (cc) {\textbf{Stage 5: Connected Component Clustering ($L1 \dots L_n$) \& Anatomical Mapping}};
+    \node [block, below of=cc] (geom) {\textbf{Stage 6: QCA Geometry Engine (Centerline, MLD, MLA, \%DS, Slices)}};
+    \node [block, below of=geom, fill=green!15] (api) {\textbf{Flask REST API Endpoints (/api/analyze, /geometry, /cross-sections)}};
+    \node [block, below of=api, fill=orange!15] (ui) {\textbf{React + Three.js Workstation (3D Heart, Artery Interior, Flow, Report)}};
+
+    \path [line] (input) -- (prep);
+    \path [line] (prep) -- (stage1);
+    \path [line] (stage1) -- (stage2);
+    \path [line] (stage2) -- (stage3);
+    \path [line] (stage3) -- (stage4);
+    \path [line] (stage4) -- (cc);
+    \path [line] (cc) -- (geom);
+    \path [line] (geom) -- (api);
+    \path [line] (api) -- (ui);
+\end{tikzpicture}
+\caption{Overall Architectural Data-Flow Pipeline of the Coronary AI Platform}
+\label{fig:overall_architecture}
+\end{figure}
+
+\section{Algorithms and Mathematical Formulations}
+
+\subsection{Image Preprocessing and Normalization}
+Input angiograms are cast to normalized tensor representations. Contrast-limited adaptive histogram equalization (CLAHE) is selectively applied to enhance low-contrast micro-vessels without amplifying background quantum mottle. Given an input RGB pixel array $I(x, y)$, normalization is performed via ImageNet channel statistics:
+\begin{equation}
+\hat{I}_c(x, y) = \frac{\frac{I_c(x, y)}{255.0} - \mu_c}{\sigma_c}, \quad c \in \{R, G, B\}
+\end{equation}
+where $\boldsymbol{\mu} = [0.485, 0.456, 0.406]$ and $\boldsymbol{\sigma} = [0.229, 0.224, 0.225]$.
+
+\subsection{U-Net++ Vascular Tree Segmentation}
+U-Net++ segments the full coronary vascular network. Let $x^{i,j}$ denote the output feature map of node $X^{i,j}$, where $i$ indexes the down-sampling layer along the contracting path and $j$ indexes the convolutional node along the nested dense skip pathway. The node feature accumulation is computed as:
+\begin{equation}
+x^{i,j} = \begin{cases} 
+\mathcal{H}\left(x^{i-1,j}\right), & j=0 \\ 
+\mathcal{H}\left( \left[ \left[x^{i,k}\right]_{k=0}^{j-1}, \mathcal{U}\left(x^{i+1,j-1}\right) \right] \right), & j > 0 
+\end{cases}
+\end{equation}
+where $\mathcal{H}(\cdot)$ denotes a convolution followed by Batch Normalization and ReLU activation, $\mathcal{U}(\cdot)$ denotes an up-sampling layer, and $[\cdot]$ denotes channel concatenation.
+
+\subsection{Loss Functions: Combined Binary Cross-Entropy and Dice Loss}
+The semantic segmentation networks are trained using a hybrid objective function balancing pixel-level cross-entropy with regional overlap penalization to handle extreme foreground-background class imbalance:
+\begin{equation}
+\mathcal{L}_{\text{total}} = \alpha \mathcal{L}_{\text{BCE}} + (1 - \alpha) \mathcal{L}_{\text{Dice}}
+\end{equation}
+where binary cross-entropy $\mathcal{L}_{\text{BCE}}$ and Dice loss $\mathcal{L}_{\text{Dice}}$ are defined over $N$ pixels as:
+\begin{equation}
+\mathcal{L}_{\text{BCE}} = -\frac{1}{N} \sum_{i=1}^N \left[ y_i \log p_i + (1 - y_i) \log(1 - p_i) \right]
+\end{equation}
+\begin{equation}
+\mathcal{L}_{\text{Dice}} = 1 - \frac{2 \sum_{i=1}^N y_i p_i + \epsilon}{\sum_{i=1}^N y_i + \sum_{i=1}^N p_i + \epsilon}
+\end{equation}
+where $y_i \in \{0, 1\}$ represents ground truth, $p_i \in [0, 1]$ represents the predicted sigmoid probability, and $\epsilon = 10^{-6}$ provides Laplace smoothing against division by zero.
+
+\subsection{Stenosis Classification: EfficientNet-B0 Compound Scaling}
+Candidate vessel patches are evaluated by EfficientNet-B0. Compound scaling coordinates network depth $d$, width $w$, and input resolution $r$ using a constant compound coefficient $\phi$:
+\begin{equation}
+d = \alpha^\phi, \quad w = \beta^\phi, \quad r = \gamma^\phi \quad \text{s.t.} \quad \alpha \cdot \beta^2 \cdot \gamma^2 \approx 2, \quad \alpha \ge 1, \beta \ge 1, \gamma \ge 1
+\end{equation}
+The penultimate feature layer passes through adaptive average pooling and a linear projection yielding the scalar stenosis confidence probability $P(\text{Stenosis} \mid \text{ROI})$.
+
+\subsection{Gradient-Weighted Class Activation Mapping (Grad-CAM)}
+To produce visual saliency heatmaps, gradients of the stenosis class score $y^c$ with respect to feature activation maps $A^k$ of the convolutional layer are pooled:
+\begin{equation}
+\alpha_k^c = \frac{1}{Z} \sum_{i=1}^U \sum_{j=1}^V \frac{\partial y^c}{\partial A_{i,j}^k}
+\end{equation}
+The coarse Grad-CAM localization map $L_{\text{Grad-CAM}}^c$ is computed as a rectified linear combination:
+\begin{equation}
+L_{\text{Grad-CAM}}^c = \text{ReLU}\left( \sum_k \alpha_k^c A^k \right)
+\end{equation}
+guaranteeing that only features positively contributing to the stenosis score are visualized.
+
+\subsection{Connected Component Extraction and Multi-Lesion Clustering}
+Given the binary stenosis segmentation mask $B(x, y) \in \{0, 1\}$ produced at decision threshold $\tau = 0.30$, 8-connectivity connected-component analysis partitions the mask into disjoint sets:
+\begin{equation}
+B = \bigcup_{k=1}^K C_k, \quad C_i \cap C_j = \emptyset \quad \forall i \neq j
+\end{equation}
+For each component $C_k$, the area $A_k$, centroid $(\bar{x}_k, \bar{y}_k)$, and bounding box $[x_{\min}, y_{\min}, x_{\max}, y_{\max}]$ are extracted:
+\begin{equation}
+A_k = \sum_{(x,y) \in C_k} 1, \quad \bar{x}_k = \frac{1}{A_k} \sum_{(x,y) \in C_k} x, \quad \bar{y}_k = \frac{1}{A_k} \sum_{(x,y) \in C_k} y
+\end{equation}
+Spurious segmentation noise is filtered via the threshold criterion $A_k \ge A_{\min} = 20\text{ px}$. Components are sorted descending by area such that $L1 = \arg\max_k A_k$.
+
+\subsection{Quantitative Coronary Analysis (QCA) Caliber Equations}
+Along the vessel centerline, reference vessel diameter (RVD) and minimal lumen diameter (MLD) in millimeters are derived assuming a research spatial scale $s = 0.20\text{ mm/px}$. Percent Diameter Stenosis (\%DS) and Percent Area Stenosis (\%AS) are computed per standard clinical definitions:
+\begin{equation}
+\%DS = \left( \frac{\text{RVD} - \text{MLD}}{\text{RVD}} \right) \times 100\%
+\end{equation}
+\begin{equation}
+\text{MLA} = \pi \left( \frac{\text{MLD}}{2} \right)^2, \quad \text{RVA} = \pi \left( \frac{\text{RVD}}{2} \right)^2
+\end{equation}
+\begin{equation}
+\%AS = \left( \frac{\text{RVA} - \text{MLA}}{\text{RVA}} \right) \times 100\% = \left[ 1 - \left( \frac{\text{MLD}}{\text{RVD}} \right)^2 \right] \times 100\%
+\end{equation}
+
+\subsection{Illustrative Hemodynamic Flow Acceleration}
+Within the 3D artery interior, blood flow particle velocity $v(x)$ through local lumen diameter $D(x)$ is simulated using the principle of volumetric fluid continuity and Bernoulli acceleration:
+\begin{equation}
+Q = A(x) \cdot v(x) = \text{constant} \implies v(x) = v_{\text{inlet}} \cdot \left( \frac{D_{\text{proximal}}}{D(x)} \right)^2
+\end{equation}
+Particles traveling through stenotic constrictions accelerate locally while remaining strictly constrained within the remaining open lumen radius $r(x) = D(x)/2$.
+
+\section{Tools and Technologies}
+The full-stack technological ecosystem comprises:
+\begin{itemize}
+    \item \textbf{Deep Learning \& Scientific Frameworks:} Python 3.12, PyTorch 2.11, Segmentation Models PyTorch (SMP), Torchvision, OpenCV, Scikit-learn, NumPy, SciPy, Pillow.
+    \item \textbf{Backend Web Microservice:} Flask 3.1, Flask-CORS, Werkzeug.
+    \item \textbf{Frontend Graphical Engine:} React 18, Vite 6, Three.js (r128+), React Three Fiber, Lucide React, HTML5 Canvas API.
+    \item \textbf{Document \& Diagram Authoring:} LaTeX, TikZ, BibTeX.
+\end{itemize}

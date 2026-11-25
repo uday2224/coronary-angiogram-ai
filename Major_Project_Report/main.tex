@@ -1,0 +1,143 @@
+\documentclass[12pt,a4paper,oneside]{report}
+
+% ==============================================================================
+% VTU MAJOR PROJECT REPORT MASTER LATEX TEMPLATE
+% Project: AI-Based Coronary Artery Stenosis Detection and 3D Visualization
+% Department: Computer Science and Engineering (Data Science)
+% College: PES Institute of Technology and Management (PESITM), Shivamogga
+% ==============================================================================
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx} % Times New Roman equivalent
+\usepackage{geometry}
+\geometry{
+    top=1.0in,
+    bottom=1.0in,
+    left=1.25in,
+    right=1.0in
+}
+
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows, positioning, calc}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=blue,
+    pdftitle={AI-BASED CORONARY ARTERY STENOSIS DETECTION AND 3D VISUALIZATION USING CORONARY ANGIOGRAM IMAGES},
+    pdfauthor={Department of CSE (Data Science), PESITM}
+}
+
+% Header and Footer configuration per VTU standard
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\nouppercase{\leftmark}}
+\fancyfoot[L]{\scriptsize Department of CSE (Data Science), PESITM, Shivamogga}
+\fancyfoot[R]{\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
+
+% Redefine plain style for chapter starting pages
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[L]{\scriptsize Department of CSE (Data Science), PESITM, Shivamogga}
+    \fancyfoot[R]{\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0.5pt}
+}
+
+% Chapter formatting
+\titleformat{\chapter}[DISPLAY]
+{\normalfont\huge\bfseries\centering}{\chaptertitlename\ \thechapter}{15pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{20pt}{30pt}
+
+\begin{document}
+
+% ------------------------------------------------------------------------------
+% PRELIMINARY PAGES (ROMAN NUMBERING)
+% ------------------------------------------------------------------------------
+\pagenumbering{roman}
+
+\input{preliminary/title_page.tex}
+\newpage
+
+\input{preliminary/vision_mission.tex}
+\newpage
+
+\input{preliminary/peo_pso.tex}
+\newpage
+
+\input{preliminary/certificate.tex}
+\newpage
+
+\input{preliminary/declaration.tex}
+\newpage
+
+\input{preliminary/acknowledgement.tex}
+\newpage
+
+\input{preliminary/abstract.tex}
+\newpage
+
+% Lists
+\tableofcontents
+\newpage
+\listoftables
+\newpage
+\listoffigures
+\newpage
+
+\input{preliminary/abbreviations.tex}
+\newpage
+
+% ------------------------------------------------------------------------------
+% MAIN BODY (ARABIC NUMBERING)
+% ------------------------------------------------------------------------------
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\input{chapters/chapter1_introduction.tex}
+\input{chapters/chapter2_literature_review.tex}
+\input{chapters/chapter3_methodology.tex}
+\input{chapters/chapter4_implementation_testing.tex}
+\input{chapters/chapter5_results_discussion.tex}
+\input{chapters/chapter6_conclusion_future_work.tex}
+
+% ------------------------------------------------------------------------------
+% REFERENCES (IEEE STYLE)
+% ------------------------------------------------------------------------------
+\bibliographystyle{IEEEtran}
+\bibliography{references/references}
+\addcontentsline{toc}{chapter}{References}
+
+% ------------------------------------------------------------------------------
+% APPENDICES
+% ------------------------------------------------------------------------------
+\appendix
+\input{appendices/appendix_a.tex}
+\input{appendices/appendix_b.tex}
+\input{appendices/appendix_c.tex}
+\input{appendices/appendix_d.tex}
+\input{appendices/appendix_e.tex}
+\input{appendices/appendix_f.tex}
+
+\end{document}

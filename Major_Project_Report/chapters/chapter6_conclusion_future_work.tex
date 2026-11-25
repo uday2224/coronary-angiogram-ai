@@ -1,0 +1,25 @@
+\chapter{CONCLUSION AND FUTURE ENHANCEMENTS}
+
+\section{Conclusion}
+This major project has successfully designed, implemented, and validated an integrated \textbf{Coronary AI Workstation} combining multi-stage deep convolutional neural networks with browser-native 3D cardiovascular visual computing. By leveraging the multi-center ARCADE challenge benchmark, the platform delivers high-accuracy vessel tree delineation via U-Net++ (Dice 0.787), exceptional stenosis classification via EfficientNet-B0 (ROC-AUC 0.995, F1 0.968), and sensitive lesion outline segmentation via U-Net ResNet34 (Dice 0.4926 at $\tau = 0.30$).
+
+Crucially, the system overcomes the ubiquitous single-lesion bottleneck of existing software through an 8-connectivity connected-component spatial clustering architecture. Multiple concurrent lesions are retained, categorized as $L1, L2, \dots, L_n$, and projected onto epicardial coronary pathways. The synchronized Three.js visualization engine renders a 3D Virtual Human Heart with interactive multi-beacon pins, an extruded 3D Artery Interior with longitudinal cutaways, a Cross-Section Inspector, a Bernoulli-governed hemodynamic particle flow simulator, an AI Analytics dashboard, and automated clinical research evaluation reports. Rigorous automated testing across 40 validation assertions established 100\% pass rates for mathematical caliber consistency, session hygiene, and zero-lesion patent vessel fallback. The platform establishes a powerful, reproducible paradigm for computer-aided cardiovascular diagnosis and interventional planning.
+
+\section{Limitations}
+While the platform achieves high computational efficiency and rich visual synchronization, several inherent technical limitations must be acknowledged:
+\begin{enumerate}
+    \item \textbf{Single-View 2D Projection Constraints:} The model operates on monoplanar 2D fluoroscopic frames. In cases with severe vessel foreshortening or dense branch overlap, accurate centerline depth and spatial branch assignment cannot be fully resolved without multi-view or biplane acquisitions.
+    \item \textbf{Uncalibrated Physical Millimeter Scaling:} Quantitative metrics rely on an assumed research standard scale ($0.20\text{ mm/px}$). True clinical quantitative coronary analysis mandates catheter-based scaling using radiopaque calibration spheres or known catheter French sizes.
+    \item \textbf{Simplified Hemodynamic Physics:} The blood-flow simulator models volumetric fluid continuity and Bernoulli acceleration, serving illustrative and educational purposes. True physiological pressure gradients and Fractional Flow Reserve (FFR) require 3D Navier-Stokes computational fluid dynamics and boundary condition modeling.
+    \item \textbf{Absence of Prospective Clinical Trials:} The deep learning models were trained on retrospective challenge datasets. Prospective clinical validation across diverse catheterization laboratories is required before clinical diagnostic deployment.
+\end{enumerate}
+
+\section{Future Enhancements}
+Promising directions for future development and research extensions include:
+\begin{itemize}
+    \item \textbf{Biplane and Multi-View 3D Fusion:} Extending the input pipeline to ingest paired biplane fluoroscopic sequences ($RAO/LAO$ projections) and applying epipolar geometry constraints to reconstruct patient-specific 3D coronary centerlines.
+    \item \textbf{Temporal Motion Tracking across Cine Loops:} Integrating recurrent temporal networks (e.g., ConvLSTM or Video Vision Transformers) to track lesions continuously across the dynamic cardiac cardiac cycle, mitigating respiratory blur.
+    \item \textbf{Automated Catheter Calibration:} Incorporating deep-learning-based catheter tip detection to automatically extract pixel-to-millimeter physical conversion ratios directly from the fluoroscopic frame.
+    \item \textbf{GPU-Accelerated Web-CFD Solvers:} Integrating finite-element Lattice Boltzmann or Navier-Stokes CFD solvers to compute non-invasive virtual Fractional Flow Reserve ($vFFR$) directly within the browser interface.
+    \item \textbf{Hospital PACS / DICOM Web Integration:} Packaging the microservice as an enterprise DICOM Web / FHIR-compliant service for direct clinical deployment into catheterization laboratory Picture Archiving and Communication Systems.
+\end{itemize}

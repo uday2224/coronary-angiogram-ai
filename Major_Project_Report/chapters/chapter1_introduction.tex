@@ -1,0 +1,55 @@
+\chapter{INTRODUCTION}
+
+\section{Problem Statement}
+Cardiovascular diseases (CVDs) constitute the leading cause of mortality globally, claiming an estimated 17.9 million lives each year according to the World Health Organization (WHO). Among cardiovascular disorders, Coronary Artery Disease (CAD) represents the predominant pathological entity. CAD results from atheromatous plaque accumulation within the epicardial coronary arterial tree, leading to progressive progressive luminal narrowing (stenosis), compromised myocardial perfusion, myocardial infarction, and sudden cardiac arrest. 
+
+X-ray Coronary Angiography (XCA) remains the clinical gold-standard diagnostic imaging modality for direct visual evaluation of coronary anatomy and procedural guidance in Percutaneous Coronary Intervention (PCI). In routine cardiac catheterization laboratory practice, interventional cardiologists acquire dynamic 2D X-ray fluoroscopic projection sequences following intracoronary radiopaque contrast agent injection. However, conventional clinical evaluation of coronary angiograms faces multiple fundamental technical and perceptual challenges:
+\begin{enumerate}
+    \item \textbf{Significant Inter- and Intra-Observer Variability:} Routine clinical assessment relies on visual estimation (``eyeballing'') of percent diameter stenosis (\%DS). Clinical studies consistently establish that visual estimation suffers from 15\% to 30\% inter-observer discordance, frequently leading to overestimation or underestimation of borderline lesions (40\% to 70\% luminal narrowing).
+    \item \textbf{Projectional Limitations of 2D Fluoroscopy:} Angiography collapses a complex, tortuous, 3D pulsating epicardial arterial network into monoplanar or biplanar 2D projections. Optical foreshortening, branch vessel overlap, and non-orthogonal viewing angles obscure stenosis geometry, eccentricity, and lesion length.
+    \item \textbf{Low Signal-to-Noise Ratio and Artifacts:} Fluoroscopic images exhibit poor contrast resolution, cardiac and respiratory motion artifacts, radiation scatter, patient bone/diaphragm attenuation, and non-uniform contrast medium mixing.
+    \item \textbf{Cognitive Fatigue and High Clinical Caseload:} Manual examination of multiple projection angles across high patient volumes in emergency catheterization settings introduces human fatigue and potential diagnostic delays.
+    \item \textbf{Absence of Integrated 3D and Flow Context:} Existing PACS (Picture Archiving and Communication Systems) and clinical workstations display static or cine 2D image frames without providing interactive 3D spatial mapping, synchronized lumen cutaway views, or contextual hemodynamic blood-flow representation.
+\end{enumerate}
+
+\section{Project Description}
+The \textbf{Coronary AI Platform} developed in this major project is an integrated, end-to-end artificial intelligence and cardiovascular 3D visual computing workstation. It ingests single-frame or multi-frame 2D fluoroscopic coronary angiograms and executes a coordinated, multi-stage deep learning pipeline to deliver automated vessel segmentation, focal stenosis classification, pixel-level lesion outline segmentation, model explainability via Grad-CAM, automated multi-lesion connected component extraction, and synchronized 3D interactive visualizations.
+
+The platform bridges the gap between raw neural network predictions and clinical interpretability by translating 2D semantic masks into multi-branch anatomical anchors. Utilizing WebGL and Three.js technologies, the system renders a 3D Virtual Human Heart with interactive lesion beacons across anatomical branches (Left Anterior Descending [LAD], Left Circumflex [LCX], and Right Coronary Artery [RCA]), an interactive 3D Coronary Artery Interior cutaway allowing longitudinal fly-through inspection, synchronized circular cross-sections (Minimal Lumen Area, proximal, and distal references), illustrative hemodynamic blood-flow simulation with Bernoulli velocity acceleration, a comprehensive analytics dashboard, and automated research case report generation.
+
+\section{Objectives}
+The primary technical and engineering objectives of this project are:
+\begin{enumerate}
+    \item To implement a deep learning segmentation pipeline utilizing \textbf{U-Net++} with a ResNet34 encoder to achieve high-accuracy delineation of the coronary arterial vascular tree from 2D fluoroscopic angiograms.
+    \item To deploy an \textbf{EfficientNet-B0} deep convolutional network fine-tuned on the multi-center ARCADE benchmark dataset for binary stenosis classification across candidate vessel regions of interest.
+    \item To train and evaluate a specialized \textbf{U-Net (ResNet34)} semantic segmentation network producing pixel-level stenosis boundary masks and evaluate performance across multiple decision thresholds ($\tau \in \{0.3, 0.4, 0.5, 0.6\}$).
+    \item To integrate Gradient-weighted Class Activation Mapping (\textbf{Grad-CAM}) targeting penultimate convolutional feature representations to provide explainable visual saliency heatmaps aligned with identified lesions.
+    \item To architect a robust 8-connectivity connected-component analysis algorithm that extracts all simultaneous lesion regions, computes bounding boxes, centroids, and pixel areas, and assigns consistent identifiers ($L1, L2, \dots, L_n$).
+    \item To engineer an interactive \textbf{3D Virtual Heart} module with Three.js rendering coronary vessels and dynamic multi-beacon lesion anchors with raycasting selection and camera animation.
+    \item To build an anatomically scaled \textbf{3D Artery Interior} longitudinal cutaway with continuous tubular wall geometry, lumen passage, and interactive camera scrubber.
+    \item To develop a synchronized \textbf{Cross-Section Inspector} providing quantitative caliber metrics (Minimal Lumen Area, diameter stenosis) and side-by-side multi-lesion comparative evaluation.
+    \item To simulate continuous hemodynamic blood flow within the remaining open lumen using particle physics governed by the Bernoulli principle of stenosis velocity acceleration.
+    \item To design and deploy a full-stack web architecture utilizing a Python Flask REST API and a React/Vite front-end ensuring strict session clearance, zero-lesion patent vessel fallback, and regulatory FDA Investigational Use Only (IUO) research governance.
+\end{enumerate}
+
+\section{Scope}
+The scope of this project encompasses:
+\begin{itemize}
+    \item Processing DICOM-exported fluoroscopic angiogram images (PNG/JPEG formats) of standard resolutions ($512 \times 512$ and $256 \times 256$ pixels).
+    \item Fine-tuning and empirical validation of deep convolutional neural networks utilizing the publicly benchmarked ARCADE multi-center challenge dataset.
+    \item Developing image-based Quantitative Coronary Analysis (QCA) metrics computed from model-derived centerline geometries, while explicitly labeling uncalibrated 2D physical approximations.
+    \item Constructing client-side GPU-accelerated 3D graphics rendering seamlessly in standard web browsers without requiring proprietary workstation hardware.
+    \item Delivering an educational, research-oriented, and clinical-decision-support prototype operating strictly under Investigational Use Only (IUO) terms without claiming autonomous clinical diagnostic authorization.
+\end{itemize}
+
+\section{Purpose}
+The purpose of the Coronary AI platform is to empower cardiovascular researchers, medical students, imaging specialists, and interventional cardiology teams with an objective, reproducible, and visually intuitive diagnostic aid. By replacing subjective 2D visual estimation with quantitative deep learning boundaries and translating abstract pixel masks into spatial 3D human heart coordinates and arterial cutaways, the system seeks to reduce inter-observer discordance, streamline pre-PCI procedural planning, enhance medical education, and advance intelligent computer-aided diagnostic technology in cardiology.
+
+\section{Relevance to Sustainable Development Goals (SDGs)}
+The United Nations Sustainable Development Goals (SDGs) establish a global blueprint for dignity, peace, and prosperity. The Coronary AI project directly addresses and supports two key targets:
+
+\subsection{SDG 3: Good Health and Well-Being (Target 3.4)}
+Target 3.4 aims to reduce premature mortality from non-communicable diseases (NCDs) by one-third through prevention, early diagnosis, and treatment. Cardiovascular disease represents the single largest contributor to premature NCD mortality worldwide. By providing rapid, reproducible, and objective deep-learning-assisted detection of coronary artery stenosis, this technology supports early clinical identification of ischemic coronary disease. When validated and deployed in secondary and tertiary healthcare centers, computer-aided angiogram workstations can assist interventionalists in identifying critical multi-vessel lesions, thereby improving procedural accuracy and patient triage.
+
+\subsection{SDG 9: Industry, Innovation, and Infrastructure (Target 9.5)}
+Target 9.5 encourages scientific research, technological innovation, and digital infrastructure modernization in healthcare. This project exemplifies digital healthcare innovation by synthesizing state-of-the-art computer vision architectures (U-Net++, EfficientNet, Grad-CAM) with modern web-based 3D graphics (WebGL, Three.js) and lightweight microservices. Building accessible, low-latency, browser-based cardiovascular analytics reduces reliance on cost-prohibitive proprietary imaging hardware, promoting equitable access to advanced diagnostic tools across diverse medical centers.

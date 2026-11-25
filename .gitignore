@@ -1,0 +1,38 @@
+# Environments
+.venv/
+env/
+venv/
+ENV/
+*.env
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.pytest_cache/
+
+# Node & Frontend Build
+node_modules/
+frontend/dist/
+frontend/node_modules/
+.npm
+.eslintcache
+
+# Generated Output Images & Dynamic Artifacts
+backend/outputs/*.png
+backend/outputs/analyses_history.json
+!backend/outputs/.gitkeep
+
+# Large PyTorch Model Weights (>100MB causes standard GitHub push rejection)
+backend/models/*.pth
+backend/models/*.pkl
+!backend/models/.gitkeep
+
+# IDE & System Files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

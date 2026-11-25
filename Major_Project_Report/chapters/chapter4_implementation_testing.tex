@@ -1,0 +1,163 @@
+\chapter{IMPLEMENTATION AND TESTING}
+
+\section{System Implementation}
+
+\subsection{Project Directory Structure}
+The repository is engineered according to a modular decoupled architecture separating Python backend services, model checkpoints, front-end visual components, documentation viewplates, and automated test suites:
+
+\begin{lstlisting}[basicstyle=\scriptsize\ttfamily, frame=single, caption={Directory Layout of Coronary AI Platform}]
+coronary_angiogram_ai_starter_antigravity/
+|-- backend/
+|   |-- app/
+|   |   |-- __init__.py           # Flask app factory, CORS config
+|   |   |-- model_adapter.py      # Pipeline runner, connected-comp, QCA
+|   |   `-- routes.py             # REST endpoints, DB cache, reports
+|   |-- models/
+|   |   |-- arcade_stenosis_unet_best.pth               # 97.9 MB (U-Net)
+|   |   |-- efficientnet_b0_arcade_stenosis_model.pkl   # 16.3 MB (EfficientNet)
+|   |   `-- unetplusplus_resnet34_arcade_model.pkl      # 104.5 MB (U-Net++)
+|   |-- outputs/                  # Dynamic PNG overlays per analysis ID
+|   |-- requirements.txt          # PyTorch, SMP, Flask dependencies
+|   |-- run.py                    # Server launcher
+|   `-- test_all_endpoints.py     # 40-check automated test harness
+|-- frontend/
+|   |-- src/
+|   |   |-- components/
+|   |   |   |-- AnalyticsDashboard.jsx    # Multi-lesion analytics & ARCADE log
+|   |   |   |-- AngiogramViewer.jsx       # 2D workstation, zoom, multi-crop
+|   |   |   |-- ArteryInterior3D.jsx      # 180 cutaway, multi-lesion jump
+|   |   |   |-- BloodFlowViewer.jsx       # Hemodynamic particle simulation
+|   |   |   |-- CrossSectionInspector.jsx # Multi-lesion MLA slice comparisons
+|   |   |   |-- FDABanner.jsx             # Regulatory IUO header notices
+|   |   |   |-- ResearchReport.jsx        # Multi-lesion printable evaluation
+|   |   |   `-- VirtualHeart3D.jsx        # 3D Heart with L1..Ln beacons
+|   |   |-- App.jsx                       # Root state coordinator
+|   |   `-- styles.css                    # Professional dark workstation CSS
+|   `-- package.json                      # React, Vite, Three.js specs
+|-- docs/                                 # Architectural specifications
+`-- test_images/                          # Real fluoroscopic test angiograms
+\end{lstlisting}
+
+\subsection{Multi-Model Pipeline and Inference Execution}
+Model loading and inference orchestration are centralized in \texttt{backend/app/model\_adapter.py}. The pipeline loads pre-trained checkpoints onto CPU, instantiating model wrappers:
+
+\begin{lstlisting}[language=Python, basicstyle=\scriptsize\ttfamily, frame=single, caption={Multi-Model Pipeline Initialization in Python}]
+class ModelPipeline:
+    def __init__(self, models_dir: Path, device: str = "cpu"):
+        self.device = torch.device(device)
+        self.models_dir = models_dir
+        
+        # 1. Vessel Segmentation Model (U-Net++ ResNet34)
+        vessel_path = models_dir / "unetplusplus_resnet34_arcade_model.pkl"
+        with open(vessel_path, "rb") as f:
+            self.vessel_model = pickle.load(f).to(self.device)
+        self.vessel_model.eval()
+        
+        # 2. Stenosis Classifier (EfficientNet-B0)
+        cls_path = models_dir / "efficientnet_b0_arcade_stenosis_model.pkl"
+        with open(cls_path, "rb") as f:
+            self.classifier = pickle.load(f).to(self.device)
+        self.classifier.eval()
+        
+        # 3. Lesion Outline Segmentor (U-Net ResNet34)
+        stenosis_path = models_dir / "arcade_stenosis_unet_best.pth"
+        self.stenosis_model = smp.Unet(
+            encoder_name="resnet34", encoder_weights=None,
+            in_channels=3, classes=1
+        ).to(self.device)
+        ckpt = torch.load(stenosis_path, map_location=self.device)
+        self.stenosis_model.load_state_dict(ckpt["model_state_dict"])
+        self.stenosis_model.eval()
+\end{lstlisting}
+
+\subsection{Connected Component Multi-Lesion Extraction}
+In \texttt{localize\_artery\_and\_lesion()}, 8-connectivity connected-component analysis extracts discrete lesion components, sorting them descending by pixel area and associating them with coronary paths:
+
+\begin{lstlisting}[language=Python, basicstyle=\scriptsize\ttfamily, frame=single, caption={Connected-Component Extraction and Multi-Lesion Registry}]
+num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+    stenosis_mask, connectivity=8
+)
+
+lesions = []
+for label_idx in range(1, num_labels):
+    area_px = int(stats[label_idx, cv2.CC_STAT_AREA])
+    if area_px < 20:  # Suppress single-pixel noise spikes
+        continue
+    
+    x = int(stats[label_idx, cv2.CC_STAT_LEFT])
+    y = int(stats[label_idx, cv2.CC_STAT_TOP])
+    w = int(stats[label_idx, cv2.CC_STAT_WIDTH])
+    h = int(stats[label_idx, cv2.CC_STAT_HEIGHT])
+    cx, cy = float(centroids[label_idx][0]), float(centroids[label_idx][1])
+    
+    comp_mask = (labels == label_idx).astype(np.uint8)
+    contours, _ = cv2.findContours(comp_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contour_coords = contours[0].squeeze().tolist() if len(contours) > 0 else []
+
+    lesions.append({
+        "pixel_area": area_px,
+        "centroid": [round(cx, 1), round(cy, 1)],
+        "bbox": [x, y, x + w, y + h],
+        "contour_coordinates": contour_coords,
+    })
+
+# Sort descending by pixel footprint: L1 is primary lesion
+lesions.sort(key=lambda item: item["pixel_area"], reverse=True)
+for idx, lesion in enumerate(lesions, start=1):
+    lesion["lesion_id"] = f"L{idx}"
+    lesion["lesion_number"] = idx
+\end{lstlisting}
+
+\subsection{Patent Zero-Lesion Fallback Handling}
+For negative cases ($0$ stenosis pixels detected), the backend strictly returns zero 3D heart coordinates, sets $\%DS = 0.0\%$, $\%AS = 0.0\%$, lesion length $= 0.0\text{ mm}$, and populates a mandatory regulatory disclaimer: \textit{``Negative Finding: No focal stenosis detected by the current segmentation model. This research result does not independently establish that the artery is clinically normal.''}
+
+\subsection{REST API Implementation}
+The Flask microservice exposes seven dedicated JSON endpoints:
+\begin{itemize}
+    \item \texttt{GET /api/health}: Validates pipeline readiness, loaded PyTorch models, and returns FDA IUO disclaimers.
+    \item \texttt{POST /api/analyze}: Accepts multipart/form-data fluoroscopic images, executes full inference, caches records in memory, and returns analysis tokens.
+    \item \texttt{GET /api/analysis/<id>}: Retrieves complete analysis results for the specified token.
+    \item \texttt{GET /api/analysis/<id>/geometry}: Returns 100 centerline caliber samples and multi-lesion QCA profiles.
+    \item \texttt{GET /api/analysis/<id>/cross-sections}: Supports \texttt{?lesion\_id=LX} parameter and returns slice dictionaries for all lesions.
+    \item \texttt{GET /api/analytics/summary}: Aggregates case logs, artery-wise lesion distributions, and ARCADE validation benchmarks.
+    \item \texttt{GET /api/reports/<id>}: Serves structured, multi-lesion case evaluation reports formatted for printing and PDF generation.
+\end{itemize}
+
+\subsection{3D Interactive WebGL Front-End Implementation}
+Front-end modules leverage Three.js to render interactive 3D visualizations:
+\begin{itemize}
+    \item \textbf{3D Virtual Heart (\texttt{VirtualHeart3D.jsx}):} Loads an anatomically accurate GLTF cardiac mesh, renders coronary artery pathways (LAD, LCX, RCA), and spawns pulsing 3D pin sprites ($L1, L2, \dots$) for all mapped lesions. A canvas raycaster detects clicks on beacons, updating the active lesion and animating the camera smoothly to target coordinates.
+    \item \textbf{3D Artery Interior (\texttt{ArteryInterior3D.jsx}):} Reconstructs an extruded tubular mesh with a 180$^\circ$ cutaway exposing the internal lumen. Multiple Gaussian constriction profiles model distinct stenoses along the longitudinal axis ($X \in [-3.5, +3.5]$). An interactive camera scrubber allows users to fly through the lumen with synchronized caliber readouts.
+    \item \textbf{Cross-Section Inspector (\texttt{CrossSectionInspector.jsx}):} Utilizes HTML5 Canvas to render circular lumen and vessel boundaries for Proximal Reference, Minimal Lumen Area, and Distal Reference slices, featuring an interactive lesion tab bar and side-by-side comparison mode.
+    \item \textbf{Hemodynamics Simulator (\texttt{BloodFlowViewer.jsx}):} Deploys 250 fluid particles circulating through the tubular artery, accelerating through narrowings according to the continuity equation and Bernoulli principle.
+\end{itemize}
+
+\section{System Testing and Test Protocols}
+To ensure robust functionality, scientific validity, and data integrity, an automated test harness (\texttt{backend/test\_all\_endpoints.py}) was executed against the backend API.
+
+\begin{table}[H]
+\centering
+\caption{Automated Unit and Integration Test Case Results (100\% Pass Rate)}
+\label{tab:test_cases}
+\small
+\begin{tabular}{p{1.2cm}p{2.6cm}p{3.8cm}p{3.8cm}c}
+\toprule
+\textbf{Test ID} & \textbf{Module} & \textbf{Input / Condition} & \textbf{Expected Output} & \textbf{Status} \\
+\midrule
+TC-01 & Health Service & \texttt{GET /api/health} & Status 200, \texttt{model\_loaded: true}, IUO notice & PASS \\
+TC-02 & Ingestion Check & \texttt{POST /api/analyze} (empty body) & HTTP 400 Bad Request (\texttt{FILE\_MISSING}) & PASS \\
+TC-03 & Ingestion Check & \texttt{POST /api/analyze} (.txt file) & HTTP 415 Unsupported Media Type & PASS \\
+TC-04 & Ingestion Check & \texttt{POST /api/analyze} (corrupt image) & HTTP 400 Bad Request (\texttt{INVALID\_IMAGE}) & PASS \\
+TC-05 & Pipeline Inference & \texttt{POST /api/analyze} (test\_angiogram\_1) & Status 200, valid analysis ID (\texttt{CAI-XXXXXXXX}) & PASS \\
+TC-06 & QCA Consistency & Geometry dictionary inspection & $\text{MLD} \le \text{RVD}$, valid \%DS and MLA derived & PASS \\
+TC-07 & Provenance Check & Geometry calibration metadata & \texttt{is\_physically\_calibrated: false}, IVUS disclaimer & PASS \\
+TC-08 & Zero-Lesion Fallback & \texttt{POST /api/analyze} (clean patent image) & Stenosis pixels $= 0$, \%DS $= 0.0\%$, no 3D beacon & PASS \\
+TC-09 & Session Isolation & Sequential uploads of different images & Independent IDs, no stale coordinates or masks & PASS \\
+TC-10 & Cross-Sections & \texttt{GET /api/analysis/<id>/cross-sections} & Returns profiles for all mapped lesions ($L1, L2$) & PASS \\
+TC-11 & Report Generation & \texttt{GET /api/reports/<id>} & Multi-lesion findings registry, primary lesion ID & PASS \\
+TC-12 & Static Overlays & \texttt{GET /outputs/<token>\_overlay.png} & HTTP 200, Content-Type: \texttt{image/png} & PASS \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All 40 automated programmatic assertions executed across \texttt{test\_all\_endpoints.py} passed successfully, confirming mathematical consistency, input validation security, and multi-lesion data provenance.

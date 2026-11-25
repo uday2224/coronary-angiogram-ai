@@ -1,0 +1,70 @@
+\chapter{LITERATURE REVIEW / EXISTING SYSTEM}
+
+\section{Existing Work}
+Medical image analysis for coronary angiography has witnessed substantial evolution over the past three decades, advancing from traditional hand-crafted edge detectors and hessian-based tubular filters to modern deep convolutional and attention-based neural networks.
+
+\subsection{Vessel Enhancement and Traditional Segmentation}
+Early approaches to coronary tree segmentation relied extensively on multi-scale Hessian vesselness filtering, as formulated by Frangi et al. and Sato et al. In 2016, Kerkeni et al.~\cite{kerkeni2016coronary} introduced an enhanced coronary segmentation framework combining vesselness filtering with deep learning representations. Their methodology utilized multi-scale morphological operators to suppress non-vascular radiographic noise (rib shadows, diaphragm edges, catheter tips) prior to classifying vascular pixels. While effective in delineating high-contrast proximal vessel segments, traditional Hessian-based filters exhibit severe degradation at branch bifurcations, vessel crossings, and severely narrowed stenotic segments where local tubularity assumptions collapse.
+
+\subsection{U-Net and Encoder-Decoder Architectures in Medical Segmentation}
+The landmark introduction of the U-Net architecture by Ronneberger et al.~\cite{ronneberger2015u} in 2015 transformed biomedical image segmentation. U-Net's symmetric contracting and expanding paths linked by horizontal skip connections preserve fine spatial feature details while aggregating deep context representations. In 2018, Zhou et al.~\cite{zhou2018unetplusplus} developed \textbf{UNet++}, introducing nested, dense skip pathways and deep supervision. The dense skip convolutions bridge the semantic disparity between encoder and decoder feature maps before fusion, proving particularly advantageous for fine, continuous structures such as coronary arterial branches. In contemporary benchmarks, U-Net++ coupled with deep residual backbones (such as ResNet34 by He et al.~\cite{he2016deep}) consistently demonstrates superior Dice Similarity Coefficients compared to standard FCNs or vanilla U-Net.
+
+\subsection{Deep Learning for Automated Stenosis Classification}
+Automated stenosis detection has been investigated via regional classification and object detection networks. Cong Ly et al.~\cite{congly2020stenosis} formulated a two-stage deep convolutional framework in IEEE Access, utilizing candidate region proposal networks to isolate prospective vessel crops followed by classification into hemodynamically significant ($\ge 50\%$ diameter reduction) versus non-significant lesions. In 2021, Moon et al.~\cite{moon2021automated} demonstrated an automated stenosis severity assessment pipeline using deep learning on multi-center angiograms, reporting high classification sensitivity but emphasizing the challenge of boundary delineation in calcified and eccentric plaques. The advent of EfficientNet architectures by Tan and Le~\cite{tan2019efficientnet} in 2019 provided compound scaling (depth, width, resolution), enabling networks such as EfficientNet-B0 to attain state-of-the-art diagnostic accuracy with fewer parameters and lower computational overhead than legacy VGG or ResNet-50 classifiers.
+
+\subsection{Multi-Center Challenge Benchmarks: The ARCADE Dataset}
+In 2023, Savchenko et al.~\cite{arcade2023challenge} released the \textbf{ARCADE} (Automated Regional Coronary Angiography and Diagnostic Evaluation) challenge benchmark through Nature Scientific Data. ARCADE represents the largest publicly available multi-center annotated coronary angiogram dataset, comprising 3,000 expertly annotated X-ray fluoroscopic frames captured across multiple hospital sites and angiographic projections. ARCADE provides standardized, separate tracks for:
+\begin{enumerate}
+    \item \textbf{Syntax Artery Segmentation:} 1,000 training and 200 validation images annotated for full coronary vessel tree branches (LAD, LCX, RCA).
+    \item \textbf{Stenosis Detection and Segmentation:} Expert-delineated polygonal boundary annotations of focal luminal narrowings and plaques across diverse clinical presentations.
+\end{enumerate}
+The release of ARCADE has established an objective, reproducible standard for validating deep learning coronary segmentation models.
+
+\subsection{Model Interpretability and Saliency}
+Deploying deep learning in clinical domains requires transparency and explainability. In 2017, Selvaraju et al.~\cite{selvaraju2017gradcam} proposed Gradient-weighted Class Activation Mapping (\textbf{Grad-CAM}). By calculating the gradient of the target classification score with respect to the feature activation maps of the final convolutional layer, Grad-CAM produces a coarse 2D visual heatmap highlighting the discriminative image regions utilized by the neural network. In coronary angiography, Grad-CAM allows interventionalists to verify that model predictions are genuinely anchored to vascular stenosis rather than confounding catheter tips, pacemakers, or radiopaque bone structures.
+
+\subsection{3D Coronary Reconstruction and Hemodynamic Modeling}
+Reconstructing 3D coronary artery models from 2D planar angiography has been explored by Zhao et al.~\cite{zhao2021coronary} and Taylor et al.~\cite{taylor2013computational}. True patient-specific 3D geometric reconstruction traditionally mandates synchronized biplane fluoroscopic acquisitions with calibrated gantry rotation angles, followed by epipolar constraint optimization and non-rigid iterative deformation. While Computational Fluid Dynamics (CFD) provides precise fractional flow reserve (FFR) calculations, CFD requires Navier-Stokes numerical solvers requiring hours of computation on high-performance GPU clusters, rendering real-time web deployment impractical. Consequently, interactive WebGL-based visual simulations governed by fluid continuity and Bernoulli acceleration equations present a compelling alternative for interactive clinical education and pre-procedural briefing.
+
+\section{Summary of Key Literature Survey Papers}
+Table~\ref{tab:literature_survey} synthesizes key research investigations directly relevant to the architectural design and implementation of the proposed Coronary AI workstation.
+
+\begin{table}[H]
+\centering
+\caption{Comprehensive Literature Review and Comparative Synthesis}
+\label{tab:literature_survey}
+\small
+\begin{tabular}{p{2.5cm}p{2.5cm}p{1.8cm}p{3.8cm}p{3.8cm}}
+\toprule
+\textbf{Paper \& Authors} & \textbf{Publication \& Year} & \textbf{Architecture} & \textbf{Key Advantages} & \textbf{Limitations \& Gaps} \\
+\midrule
+Ronneberger et al.~\cite{ronneberger2015u} & MICCAI (2015) & Vanilla U-Net & Robust contracting-expanding path; preserves boundary localization. & High semantic gap across skip links; degraded bifurcations. \\
+Zhou et al.~\cite{zhou2018unetplusplus} & DLMIA (2018) & UNet++ & Dense nested skip pathways; superior small-vessel segmentation. & Increased memory footprint; higher training time. \\
+Tan \& Le~\cite{tan2019efficientnet} & ICML (2019) & EfficientNet & Compound scaling; high parameter efficiency and ROC-AUC. & Classification only; no boundary or area measurement. \\
+Selvaraju et al.~\cite{selvaraju2017gradcam} & IEEE ICCV (2017) & Grad-CAM & Transparent gradient-based saliency heatmaps; model-agnostic. & Coarse spatial resolution limited by deepest feature map size. \\
+Cong Ly et al.~\cite{congly2020stenosis} & IEEE Access (2020) & Faster R-CNN + CNN & Automated ROI localization and classification of severe lesions. & Single-lesion focus; no interactive 3D spatial or flow context. \\
+Savchenko et al.~\cite{arcade2023challenge} & Nature Sci. Data (2023) & Multi-center ARCADE benchmark & Standardized multi-center dataset for vessels and stenosis. & Raw data benchmark; lacks integrated workstation UI. \\
+Zhao et al.~\cite{zhao2021coronary} & CRM (2021) & Epipolar 3D Reconstruction & Exact geometric centerline from biplane projections. & Requires calibrated biplane inputs; fails on single 2D views. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Problems with Existing Systems}
+Analysis of current clinical angiography software and published computer-aided diagnostic systems reveals several acute limitations:
+\begin{enumerate}
+    \item \textbf{Single-Lesion Bottlenecks:} Most reported CAD models process an image and output only a single bounding box or top-ranked lesion, discarding secondary or multi-vessel stenoses visible in the same frame.
+    \item \textbf{Disjointed Pipeline Stages:} Vessel segmentation, lesion detection, and QCA calculations are frequently implemented as isolated research scripts without an integrated data flow.
+    \item \textbf{Absence of Model Interpretability:} Commercial QCA platforms offer automated edge detection but lack deep learning feature saliency maps, preventing interventionalists from inspecting the neural network's visual rationale.
+    \item \textbf{Static 2D Presentation:} Existing PACS viewers render angiograms solely as 2D cine loops without correlating identified lesions to a 3D anatomical heart or vessel interior cutaway.
+    \item \textbf{Overstated Clinical Claims:} Multiple academic prototypes inappropriately report 2D pixel areas as direct physiological FFR or IVUS plaque burden without disclosing calibration limits or obtaining catheter scaling.
+\end{enumerate}
+
+\section{Gap Identification}
+The fundamental gap identified in existing literature and clinical practice is the lack of a **unified, multi-lesion, full-stack coronary AI workstation** that seamlessly connects:
+\begin{itemize}
+    \item Robust multi-model deep learning inference (U-Net++, EfficientNet-B0, U-Net ResNet34, Grad-CAM).
+    \item Connected-component multi-lesion extraction retaining all simultaneous disease sites.
+    \item Real-time, browser-native 3D anatomical heart projection and longitudinal lumen cutaway reconstruction.
+    \item Transparent scientific disclosures distinguishing 2D pixel findings from calibrated clinical metrics.
+\end{itemize}
+The Coronary AI platform engineered in this project is specifically designed to eliminate this gap.

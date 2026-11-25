@@ -1,0 +1,71 @@
+\chapter{KEY SOURCE CODE AND API SPECIFICATIONS}
+\label{app:appendix_f}
+
+\section{Core Multi-Lesion Geometry Extraction Algorithm}
+The following Python implementation in \texttt{backend/app/model\_adapter.py} extracts multi-lesion plaque distributions along 100 vessel centerline samples:
+
+\begin{lstlisting}[language=Python, basicstyle=\scriptsize\ttfamily, frame=single, caption={Multi-Lesion Caliber Profile Engine}]
+def extract_artery_geometry(stenosis_mask, vessel_mask, lesions):
+    """
+    Extracts multi-lesion caliber profiles and independent QCA measurements
+    along 100 centerline vessel samples.
+    """
+    n_points = 100
+    ref_d_mm = 3.92
+    centerline_x = np.linspace(-3.5, 3.5, n_points)
+    lumen_radius = np.full(n_points, ref_d_mm / 2.0)
+    outer_radius = np.full(n_points, ref_d_mm / 2.0)
+
+    # Superpose Gaussian narrowing for each mapped lesion
+    for l in lesions:
+        if l.get("artery_assignment_status") in ("Mapped", "Probable mapping"):
+            pos_x = l.get("centerline_sample_idx", 50)
+            depth = l.get("constriction_depth", 0.5)
+            sigma = l.get("sigma", 6.0)
+            
+            gauss = depth * np.exp(-0.5 * ((np.arange(n_points) - pos_x) / sigma) ** 2)
+            lumen_radius = np.maximum(0.2, lumen_radius - (gauss * (ref_d_mm / 2.0)))
+
+    # Compute MLD, MLA, and %DS for each lesion
+    for l in lesions:
+        idx = l.get("mla_sample_index", 50)
+        mld = float(np.round(lumen_radius[idx] * 2.0, 2))
+        mla = float(np.round(np.pi * (lumen_radius[idx] ** 2), 2))
+        ds = float(np.round(((ref_d_mm - mld) / ref_d_mm) * 100.0, 1))
+        
+        l["minimal_lumen_diameter_mm"] = mld
+        l["minimal_lumen_area_mm2"] = mla
+        l["diameter_stenosis"] = ds
+
+    return {
+        "n_samples": n_points,
+        "reference_diameter_mm": ref_d_mm,
+        "lumen_diameters": (lumen_radius * 2.0).tolist(),
+        "outer_diameters": (outer_radius * 2.0).tolist(),
+        "lesions": lesions
+    }
+\end{lstlisting}
+
+\section{Flask REST API Specification}
+Table~\ref{tab:api_endpoints} details the complete RESTful microservice API surface.
+
+\begin{table}[H]
+\centering
+\caption{Coronary AI RESTful API Endpoint Specifications}
+\label{tab:api_endpoints}
+\small
+\begin{tabular}{llp{5.5cm}p{3.5cm}}
+\toprule
+\textbf{HTTP Method} & \textbf{Endpoint Route} & \textbf{Payload / Query Parameters} & \textbf{Response Description} \\
+\midrule
+\texttt{GET} & \texttt{/api/health} & None & Readiness, PyTorch models, IUO notice \\
+\texttt{POST} & \texttt{/api/analyze} & Multipart: \texttt{file} (fluoroscopy frame) & Analysis token, lesions list, overlays \\
+\texttt{GET} & \texttt{/api/analysis/<id>} & Path: \texttt{analysis\_id} & Complete analysis record \\
+\texttt{GET} & \texttt{/api/analysis/<id>/geometry} & Path: \texttt{analysis\_id} & 100 centerline samples, QCA \\
+\texttt{GET} & \texttt{/api/analysis/<id>/cross-sections} & Query: \texttt{?lesion\_id=LX} & Slice dictionaries for all lesions \\
+\texttt{GET} & \texttt{/api/analytics/summary} & None & Log history, artery stats, benchmarks \\
+\texttt{GET} & \texttt{/api/reports/<id>} & Path: \texttt{analysis\_id} & Multi-lesion printable evaluation \\
+\texttt{GET} & \texttt{/outputs/<filename>} & Path: \texttt{filename} & Serves generated PNG overlays \\
+\bottomrule
+\end{tabular}
+\end{table}

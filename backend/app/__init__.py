@@ -57,6 +57,44 @@ def create_app():
     # --- Blueprint ---
     app.register_blueprint(api)
 
+    @app.route("/")
+    def index():
+        if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+            return {
+                "status": "online",
+                "service": "Coronary Angiogram AI API",
+                "version": "2.0.0",
+                "health_check": "/api/health",
+            }, 200
+
+        html = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Coronary Angiogram AI - Backend Online</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b1120; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 1.5rem; box-sizing: border-box; }
+        .card { background: #1e293b; padding: 2.5rem; border-radius: 1rem; border: 1px solid #334155; max-width: 520px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+        .badge { display: inline-block; background: #065f46; color: #34d399; font-weight: 600; font-size: 0.85rem; padding: 0.35rem 0.85rem; border-radius: 9999px; margin-bottom: 1.25rem; }
+        h1 { margin: 0 0 0.5rem; font-size: 1.5rem; color: #ffffff; }
+        p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin: 0.5rem 0 1.5rem; }
+        a.btn { display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; padding: 0.65rem 1.25rem; border-radius: 0.5rem; font-weight: 600; transition: background 0.2s; }
+        a.btn:hover { background: #1d4ed8; }
+        .notice { font-size: 0.75rem; color: #64748b; margin-top: 1.5rem; border-top: 1px solid #334155; padding-top: 1rem; line-height: 1.4; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="badge">&#9679; Backend API Online</span>
+        <h1>Coronary Angiogram AI Workstation</h1>
+        <p>The Flask API server and AI pipeline are running successfully. Connect your frontend web client or inspect the system health check.</p>
+        <a class="btn" href="/api/health" target="_blank">Check /api/health Status &rarr;</a>
+        <div class="notice">Investigational Use Only (IUO). Not for primary diagnostic use without clinical correlation.</div>
+    </div>
+</body>
+</html>"""
+        return html, 200, {"Content-Type": "text/html"}
+
     # Explicit global CORS headers for all requests & preflights
     @app.before_request
     def handle_options_preflight():

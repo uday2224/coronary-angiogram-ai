@@ -35,8 +35,8 @@ def create_app():
         OUTPUT_DIR=str(out),
         MODELS_DIR=str(models_dir),
         MAX_CONTENT_LENGTH=int(os.getenv("MAX_UPLOAD_MB", "12")) * 1024 * 1024,
-        HOST=os.getenv("FLASK_HOST", "127.0.0.1"),
-        PORT=int(os.getenv("FLASK_PORT", "5000")),
+        HOST=os.getenv("FLASK_HOST", os.getenv("HOST", "0.0.0.0")),
+        PORT=int(os.getenv("PORT", os.getenv("FLASK_PORT", "5000"))),
         MODEL_TYPE=os.getenv("MODEL_TYPE", "integrated_pipeline"),
         SEGMENTATION_THRESHOLD=float(os.getenv("SEGMENTATION_THRESHOLD", "0.3")),
     )
